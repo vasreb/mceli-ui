@@ -31,7 +31,7 @@ const generationsCreateRoute = createRoute({
 
 const generationsEditRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/generations/$uuid',
+  path: '/generations/$id',
   component: EditGeneration,
 });
 

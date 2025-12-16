@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useNavigate } from '@tanstack/react-router';
 import {
@@ -16,36 +16,97 @@ import {
   TableHead,
   TableRow,
   IconButton,
+  TextField,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
+  TablePagination,
+  Chip,
+  Tooltip,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Visibility as VisibilityIcon,
+  Refresh as RefreshIcon,
+  ContentCopy as ContentCopyIcon,
+  Search as SearchIcon,
+} from '@mui/icons-material';
 import { generationListStore } from './stores/generationListStore';
 import styles from './GenerationList.module.scss';
 
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 60) {
+    return `about ${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  } else if (diffHours < 24) {
+    return `about ${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  } else {
+    return date.toLocaleDateString('en-US');
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'done':
+      return 'success';
+    case 'running':
+      return 'info';
+    case 'failed':
+      return 'error';
+    case 'pending':
+      return 'warning';
+    default:
+      return 'default';
+  }
+};
+
 export const GenerationList = observer(() => {
   const navigate = useNavigate();
-  const { generations, isLoading, error } = generationListStore;
+  const store = generationListStore;
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    generationListStore.loadGenerations();
+    store.loadGenerations();
   }, []);
 
   const handleCreate = () => {
     navigate({ to: '/generations/create' });
   };
 
-  const handleEdit = (uuid: string) => {
-    navigate({ to: '/generations/$uuid', params: { uuid } });
+  const handleView = (id: string) => {
+    navigate({ to: '/generations/$id', params: { id } });
   };
 
-  const handleDelete = async (uuid: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить эту генерацию?')) {
-      await generationListStore.deleteGeneration(uuid);
-    }
+  const handleEdit = (id: string) => {
+    navigate({ to: '/generations/$id', params: { id } });
   };
 
-  if (isLoading) {
+  const handleRetry = async (id: string) => {
+    // TODO: реализовать retry
+    console.log('Retry generation:', id);
+  };
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const filteredGenerations = store.getFilteredGenerations();
+
+  if (store.isLoading) {
     return (
-      <Container maxWidth="lg" className={styles.container}>
+      <Container maxWidth="xl" className={styles.container}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
@@ -54,69 +115,169 @@ export const GenerationList = observer(() => {
   }
 
   return (
-    <Container maxWidth="lg" className={styles.container}>
+    <Container maxWidth="xl" className={styles.container}>
       <Box sx={{ py: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1">
-            Список генераций
+            Generations
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreate}
-          >
-            Создать
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+            New Generation
           </Button>
         </Box>
 
-        {error && (
+        {store.error && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            {store.error}
           </Alert>
         )}
+
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField
+              placeholder="Search (ID / Base Queries)"
+              size="small"
+              value={store.searchQuery}
+              onChange={(e) => store.setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ flexGrow: 1, minWidth: 250 }}
+            />
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={store.statusFilter}
+                label="Status"
+                onChange={(e) => store.setStatusFilter(e.target.value as any)}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="running">Running</MenuItem>
+                <MenuItem value="done">Done</MenuItem>
+                <MenuItem value="failed">Failed</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Locale</InputLabel>
+              <Select
+                value={store.localeFilter}
+                label="Locale"
+                onChange={(e) => store.setLocaleFilter(e.target.value)}
+              >
+                <MenuItem value="all">All</MenuItem>
+                {store.getLocales().map((locale) => (
+                  <MenuItem key={locale} value={locale}>
+                    {locale}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={store.onlyErrors}
+                  onChange={(e) => store.setOnlyErrors(e.target.checked)}
+                />
+              }
+              label="Only errors"
+            />
+          </Box>
+        </Paper>
 
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Название</TableCell>
-                <TableCell>Описание</TableCell>
-                <TableCell>Дата создания</TableCell>
-                <TableCell align="right">Действия</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell>ID</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Metrics (BQ/R/V/C)</TableCell>
+                <TableCell>SERP Snapshots</TableCell>
+                <TableCell>Locale</TableCell>
+                <TableCell>Error</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {generations.length === 0 ? (
+              {filteredGenerations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={8} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                      Нет генераций
+                      No generations found
                     </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                generations.map((generation) => (
-                  <TableRow key={generation.uuid} hover>
-                    <TableCell>{generation.name}</TableCell>
-                    <TableCell>{generation.description}</TableCell>
+                filteredGenerations.map((generation) => (
+                  <TableRow key={generation.id} hover>
+                    <TableCell>{formatTimeAgo(generation.createdAt)}</TableCell>
                     <TableCell>
-                      {new Date(generation.createdAt).toLocaleDateString('ru-RU')}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2">{generation.id}</Typography>
+                        <Tooltip title={copiedId === generation.id ? 'Copied!' : 'Copy ID'}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleCopyId(generation.id)}
+                            sx={{ p: 0.5 }}
+                          >
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={generation.status}
+                        color={getStatusColor(generation.status) as any}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {generation.metrics.baseQueries} / {generation.metrics.rootQueries} /{' '}
+                      {generation.metrics.variantQueries} / {generation.metrics.clusterQueries}
+                    </TableCell>
+                    <TableCell>{generation.serpSnapshots} total</TableCell>
+                    <TableCell>{generation.locale}</TableCell>
+                    <TableCell>
+                      {generation.error && (
+                        <Chip label={generation.error} color="error" size="small" />
+                      )}
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEdit(generation.uuid)}
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(generation.uuid)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      <Tooltip title="View">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleView(generation.id)}
+                          color="primary"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEdit(generation.id)}
+                          color="primary"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      {generation.status === 'failed' && (
+                        <Tooltip title="Retry">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleRetry(generation.id)}
+                            color="primary"
+                          >
+                            <RefreshIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -124,8 +285,17 @@ export const GenerationList = observer(() => {
             </TableBody>
           </Table>
         </TableContainer>
+
+        <TablePagination
+          component="div"
+          count={store.total}
+          page={store.page}
+          onPageChange={(_, page) => store.setPage(page)}
+          rowsPerPage={store.rowsPerPage}
+          onRowsPerPageChange={(e) => store.setRowsPerPage(Number(e.target.value))}
+          rowsPerPageOptions={[10, 25, 50, 100]}
+        />
       </Box>
     </Container>
   );
 });
-

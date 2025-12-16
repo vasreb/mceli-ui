@@ -1,28 +1,51 @@
 import { makeAutoObservable } from 'mobx';
-import { Generation } from './generationListStore';
+import { api } from '../../../api/client';
+import type {
+  GenerationDTO,
+  StartGenerationDto,
+  ClusterGenerationDto,
+  GenerationDefaultsResponse,
+} from '../../../api/types';
+
+export interface GenerationData extends GenerationDTO {
+  baseQueries: string[];
+}
 
 class EditGenerationStore {
-  generation: Generation | null = null;
+  generation: GenerationData | null = null;
+  defaults: GenerationDefaultsResponse | null = null;
   isLoading = false;
+  isLoadingDefaults = false;
   error: string | null = null;
   isSaving = false;
+  activeTab: 'overview' | 'baseQueries' | 'clusters' | 'json' = 'json';
+  isTestMode = false;
 
   constructor() {
     makeAutoObservable(this);
+    this.loadDefaults();
   }
 
-  async loadGeneration(uuid: string) {
+  async loadDefaults() {
+    this.isLoadingDefaults = true;
+    try {
+      this.defaults = await api.getGenerationDefaults();
+    } catch (error) {
+      console.error('Failed to load defaults:', error);
+      // Используем значения по умолчанию если не удалось загрузить
+    } finally {
+      this.isLoadingDefaults = false;
+    }
+  }
+
+  async loadGeneration(id: string) {
     this.isLoading = true;
     this.error = null;
     try {
-      // TODO: заменить на реальный API вызов
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const data = await api.getGeneration(id);
       this.generation = {
-        uuid,
-        name: `Генерация ${uuid}`,
-        description: `Описание генерации ${uuid}`,
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z',
+        ...data,
+        baseQueries: data.baseQueries || [],
       };
     } catch (error) {
       this.error = error instanceof Error ? error.message : 'Ошибка загрузки';
@@ -31,44 +54,21 @@ class EditGenerationStore {
     }
   }
 
-  updateField(field: keyof Generation, value: string) {
-    if (this.generation) {
-      this.generation[field] = value;
-      this.generation.updatedAt = new Date().toISOString();
-    }
-  }
-
-  async saveGeneration() {
-    if (!this.generation) return;
-
+  async startGeneration(data: StartGenerationDto): Promise<string> {
     this.isSaving = true;
     this.error = null;
     try {
-      // TODO: заменить на реальный API вызов
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      // Успешное сохранение
-    } catch (error) {
-      this.error = error instanceof Error ? error.message : 'Ошибка сохранения';
-      throw error;
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  async createGeneration(data: Omit<Generation, 'uuid' | 'createdAt' | 'updatedAt'>) {
-    this.isSaving = true;
-    this.error = null;
-    try {
-      // TODO: заменить на реальный API вызов
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const newGeneration: Generation = {
-        ...data,
-        uuid: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      this.generation = newGeneration;
-      return newGeneration.uuid;
+      if (this.isTestMode) {
+        console.log('[TEST MODE] startGeneration(data):', JSON.stringify(data, null, 2));
+        return '';
+      } else {
+        const result = await api.startGeneration(data);
+        this.generation = {
+          ...result,
+          baseQueries: result.baseQueries || data.baseQueries,
+        };
+        return result.id;
+      }
     } catch (error) {
       this.error = error instanceof Error ? error.message : 'Ошибка создания';
       throw error;
@@ -77,13 +77,59 @@ class EditGenerationStore {
     }
   }
 
+  async rerunGeneration(id: string, data: StartGenerationDto) {
+    this.isSaving = true;
+    this.error = null;
+    try {
+      if (this.isTestMode) {
+        console.log('[TEST MODE] rerunGeneration(id:', id, ', data):', JSON.stringify(data, null, 2));
+      } else {
+        const result = await api.rerunGeneration(id, data);
+        this.generation = {
+          ...result,
+          baseQueries: result.baseQueries || data.baseQueries,
+        };
+      }
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Ошибка перезапуска';
+      throw error;
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  async regenerateClusters(id: string, data: ClusterGenerationDto) {
+    this.isSaving = true;
+    this.error = null;
+    try {
+      const result = await api.regenerateClusters(id, data);
+      this.generation = {
+        ...result,
+        baseQueries: this.generation?.baseQueries || result.baseQueries || [],
+      };
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Ошибка пересчета кластеров';
+      throw error;
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  setActiveTab(tab: 'overview' | 'baseQueries' | 'clusters' | 'json') {
+    this.activeTab = tab;
+  }
+
+  setTestMode(enabled: boolean) {
+    this.isTestMode = enabled;
+  }
+
   reset() {
     this.generation = null;
     this.error = null;
     this.isLoading = false;
     this.isSaving = false;
+    this.activeTab = 'json';
   }
 }
 
 export const editGenerationStore = new EditGenerationStore();
-

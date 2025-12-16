@@ -7,12 +7,18 @@ export default defineConfig({
   server: {
     port: 8000,
   },
+  dev: {
+    hmr: true,
+  },
   html: {
     template: './index.html',
   },
   source: {
     entry: {
       index: './src/index.tsx',
+    },
+    define: {
+      'import.meta.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL || 'http://localhost:3000'),
     },
   },
   output: {
