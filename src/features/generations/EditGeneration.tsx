@@ -61,6 +61,7 @@ export const EditGeneration = observer(() => {
         serpTopK: undefined,
         minRootResults: undefined,
         okOverlapThreshold: undefined,
+        dedup: false,
       },
     };
 
@@ -81,6 +82,7 @@ export const EditGeneration = observer(() => {
           zeroOverlapIsBad: defaults.sanity.zeroOverlapIsBad,
           oneWordPolicy: defaults.sanity.oneWordPolicy,
           serpTopK: defaults.sanity.serpTopK,
+          dedup: defaults.sanity.dedup,
         },
       };
     }
@@ -193,6 +195,9 @@ export const EditGeneration = observer(() => {
     }
     if (data.sanity.serpTopK !== undefined) {
       sanity.serpTopK = data.sanity.serpTopK;
+    }
+    if (data.sanity.dedup !== undefined) {
+      sanity.dedup = data.sanity.dedup;
     }
     config.sanity = sanity;
 

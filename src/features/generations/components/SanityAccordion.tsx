@@ -85,6 +85,18 @@ export const SanityAccordion = ({ control, errors }: SanityAccordionProps) => {
             }
             label="Zero Overlap is Bad"
           />
+          <FormControlLabel
+            control={
+              <Controller
+                name="sanity.dedup"
+                control={control}
+                render={({ field }) => (
+                  <Switch {...field} checked={field.value} />
+                )}
+              />
+            }
+            label="Dedup"
+          />
           <FormControl fullWidth>
             <InputLabel>One Word Policy</InputLabel>
             <Controller
