@@ -35,6 +35,23 @@ export const OverviewTab = observer(() => {
           <strong>Roots SERP Snapshots:</strong> {generation.stats.rootsSerpSnapshotsCount}
         </Typography>
       </Box>
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          Stats
+        </Typography>
+        <Box component="dl">
+          {Object.entries(generation.stats).map(([key, value]) => (
+            <Box key={key} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+              <Typography variant="body2" color="text.secondary" component="dt">
+                {key}
+              </Typography>
+              <Typography variant="body2" component="dd">
+                {value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
       {generation.error && (
         <Box>
           <Typography variant="subtitle2" gutterBottom color="error">

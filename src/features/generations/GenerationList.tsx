@@ -35,24 +35,14 @@ import {
   Refresh as RefreshIcon,
   ContentCopy as ContentCopyIcon,
   Search as SearchIcon,
+  HelpOutline as HelpOutlineIcon,
 } from '@mui/icons-material';
 import { generationListStore } from './stores/generationListStore';
 import styles from './GenerationList.module.scss';
 
-const formatTimeAgo = (dateString: string): string => {
+const formatDateTime = (dateString: string): string => {
   const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-
-  if (diffMins < 60) {
-    return `about ${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-  } else if (diffHours < 24) {
-    return `about ${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-  } else {
-    return date.toLocaleDateString('en-US');
-  }
+  return date.toLocaleString();
 };
 
 const getStatusColor = (status: string) => {
@@ -196,7 +186,32 @@ export const GenerationList = observer(() => {
                 <TableCell>Created</TableCell>
                 <TableCell>ID</TableCell>
                 <TableCell>Status</TableCell>
-                <TableCell>Metrics (BQ/R/V/C)</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    Metrics (BQ/R/V/C)
+                    <Tooltip
+                      title={
+                        <Box>
+                          <Typography variant="body2" sx={{ mb: 0.5 }}>
+                            <strong>BQ</strong> - Base Queries
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 0.5 }}>
+                            <strong>R</strong> - Root Queries
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 0.5 }}>
+                            <strong>V</strong> - Variant Queries
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>C</strong> - Cluster Queries
+                          </Typography>
+                        </Box>
+                      }
+                      arrow
+                    >
+                      <HelpOutlineIcon fontSize="small" sx={{ color: 'text.secondary', cursor: 'help' }} />
+                    </Tooltip>
+                  </Box>
+                </TableCell>
                 <TableCell>SERP Snapshots</TableCell>
                 <TableCell>Locale</TableCell>
                 <TableCell>Error</TableCell>
@@ -215,7 +230,7 @@ export const GenerationList = observer(() => {
               ) : (
                 filteredGenerations.map((generation) => (
                   <TableRow key={generation.id} hover>
-                    <TableCell>{formatTimeAgo(generation.createdAt)}</TableCell>
+                    <TableCell>{formatDateTime(generation.createdAt)}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body2">{generation.id}</Typography>

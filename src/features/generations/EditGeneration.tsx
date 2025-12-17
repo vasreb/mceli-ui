@@ -24,6 +24,7 @@ import { editGenerationStore } from './stores/editGenerationStore';
 import { OverviewTab } from './components/OverviewTab';
 import { BaseQueriesTab } from './components/BaseQueriesTab';
 import { ClustersTab } from './components/ClustersTab';
+import { RootsTab } from './components/RootsTab';
 import { JsonTab } from './components/JsonTab';
 import { GeneralAccordion } from './components/GeneralAccordion';
 import { ClusteringAccordion } from './components/ClusteringAccordion';
@@ -43,7 +44,7 @@ export const EditGeneration = observer(() => {
 
   const getDefaultFormValues = (): GenerationFormData => {
     const baseFormData: GenerationFormData = {
-      baseQueries: '',
+      baseQueriesText: '',
       locale: 'us',
       idempotencyKey: '',
       serpSnapshotMaxAgeDays: undefined,
@@ -79,7 +80,7 @@ export const EditGeneration = observer(() => {
           okOverlapThreshold: defaults.sanity.okOverlapThreshold,
           zeroOverlapIsBad: defaults.sanity.zeroOverlapIsBad,
           oneWordPolicy: defaults.sanity.oneWordPolicy,
-          serpTopK: undefined,
+          serpTopK: defaults.sanity.serpTopK,
         },
       };
     }
@@ -115,8 +116,12 @@ export const EditGeneration = observer(() => {
   useEffect(() => {
     if (generation && !isCreate) {
       const defaultValues = getDefaultFormValues();
+      const rootTextList = (generation.baseQueries || []).map((q) =>
+        typeof q === 'string' ? q : q?.text || ''
+      );
+
       reset({
-        baseQueries: generation.baseQueries.join('\n'),
+        baseQueriesText: rootTextList.filter(Boolean).join('\n'),
         locale: 'us',
         serpSnapshotMaxAgeDays: generation.config.serpSnapshotMaxAgeDays,
         serpTopK: generation.config.serpTopK,
@@ -129,27 +134,27 @@ export const EditGeneration = observer(() => {
   }, [generation, isCreate, reset, defaults]);
 
   const handleRemoveQuery = (index: number) => {
-    const currentQueries = watch('baseQueries').split('\n').filter((q) => q.trim());
+    const currentQueries = watch('baseQueriesText').split('\n').filter((q) => q.trim());
     currentQueries.splice(index, 1);
-    reset({ ...watch(), baseQueries: currentQueries.join('\n') });
+    reset({ ...watch(), baseQueriesText: currentQueries.join('\n') });
   };
 
   const handlePasteQueries = async () => {
     try {
       const text = await navigator.clipboard.readText();
       const queries = text.split('\n').filter((q) => q.trim());
-      reset({ ...watch(), baseQueries: queries.join('\n') });
+      reset({ ...watch(), baseQueriesText: queries.join('\n') });
     } catch (err) {
       console.error('Failed to read clipboard:', err);
     }
   };
 
   const handleClearQueries = () => {
-    reset({ ...watch(), baseQueries: '' });
+    reset({ ...watch(), baseQueriesText: '' });
   };
 
   const buildStartGenerationDto = (data: GenerationFormData): StartGenerationDto => {
-    const baseQueries = data.baseQueries.split('\n').filter((q) => q.trim());
+    const baseQueries = data.baseQueriesText.split('\n').filter((q) => q.trim());
     
     const config: any = {
       locale: data.locale,
@@ -224,7 +229,9 @@ export const EditGeneration = observer(() => {
       const formData = watch();
       const dto = buildStartGenerationDto(formData);
       const generationId = await editGenerationStore.startGeneration(dto);
-      navigate({ to: '/generations/$id', params: { id: generationId } });
+      if (generationId) {
+        navigate({ to: '/generations/$id', params: { id: generationId } });
+      }
     } catch (error) {
       console.error('Ошибка запуска:', error);
     }
@@ -234,7 +241,7 @@ export const EditGeneration = observer(() => {
     navigate({ to: '/generations' });
   };
 
-  const baseQueries = watch('baseQueries').split('\n').filter((q) => q.trim());
+  const baseQueries = watch('baseQueriesText').split('\n').filter((q) => q.trim());
 
   if (isLoading && !isCreate) {
     return (
@@ -276,7 +283,7 @@ export const EditGeneration = observer(() => {
                 </Button>
               ) : (
                 <Button variant="contained" onClick={handleRerun} disabled={isSaving}>
-                  Re-run
+                  {isSaving ? <CircularProgress size={24} /> : 'Re-run'}
                 </Button>
               )}
             </Box>
@@ -305,10 +312,10 @@ export const EditGeneration = observer(() => {
                     fullWidth
                     multiline
                     rows={4}
-                    value={watch('baseQueries')}
-                    {...register('baseQueries', { required: 'Base queries are required' })}
-                    error={!!errors.baseQueries}
-                    helperText={errors.baseQueries?.message}
+                    value={watch('baseQueriesText')}
+                    {...register('baseQueriesText', { required: 'Base queries are required' })}
+                    error={!!errors.baseQueriesText}
+                    helperText={errors.baseQueriesText?.message}
                     placeholder="Enter base queries, one per line"
                   />
                   <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
@@ -319,7 +326,7 @@ export const EditGeneration = observer(() => {
                       Clear
                     </Button>
                   </Box>
-                  {baseQueries.length > 0 && (
+                  {baseQueries.length > 0 ? (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                       {baseQueries.map((query, index) => (
                         <Chip
@@ -330,6 +337,10 @@ export const EditGeneration = observer(() => {
                         />
                       ))}
                     </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                      No base queries
+                    </Typography>
                   )}
                 </Box>
 
@@ -375,6 +386,7 @@ export const EditGeneration = observer(() => {
               >
                 <Tab label="Overview" value="overview" />
                 <Tab label="Base Queries" value="baseQueries" />
+                <Tab label="Roots" value="roots" />
                 <Tab label="Clusters" value="clusters" />
                 <Tab label="JSON" value="json" />
               </Tabs>
@@ -382,6 +394,7 @@ export const EditGeneration = observer(() => {
               <Box sx={{ maxHeight: 600, overflow: 'auto' }}>
                 {activeTab === 'overview' && <OverviewTab />}
                 {activeTab === 'baseQueries' && <BaseQueriesTab />}
+                {activeTab === 'roots' && <RootsTab />}
                 {activeTab === 'clusters' && <ClustersTab />}
                 {activeTab === 'json' && <JsonTab />}
               </Box>

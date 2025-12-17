@@ -13,18 +13,22 @@ export const BaseQueriesTab = observer(() => {
     );
   }
 
+  // Обрабатываем baseQueries - могут быть строки или объекты
+  const baseQueriesArray = generation.baseQueries || [];
+  const queryTexts = baseQueriesArray.map((q) => (typeof q === 'string' ? q : q.text));
+
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        Base Queries ({generation.baseQueries.length})
+        Base Queries ({queryTexts.length})
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-        {generation.baseQueries.length === 0 ? (
+        {queryTexts.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No base queries
           </Typography>
         ) : (
-          generation.baseQueries.map((query, index) => (
+          queryTexts.map((query, index) => (
             <Chip key={index} label={query} sx={{ m: 0.5 }} />
           ))
         )}

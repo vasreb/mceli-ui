@@ -8,7 +8,7 @@ import type {
 } from '../../../api/types';
 
 export interface GenerationData extends GenerationDTO {
-  baseQueries: string[];
+  baseQueries: string[] | Array<{ id: string; text: string; serpSnapshotId: string }>;
 }
 
 class EditGenerationStore {
@@ -18,7 +18,7 @@ class EditGenerationStore {
   isLoadingDefaults = false;
   error: string | null = null;
   isSaving = false;
-  activeTab: 'overview' | 'baseQueries' | 'clusters' | 'json' = 'json';
+  activeTab: 'overview' | 'baseQueries' | 'clusters' | 'roots' | 'json' = 'json';
   isTestMode = false;
 
   constructor() {
@@ -43,6 +43,7 @@ class EditGenerationStore {
     this.error = null;
     try {
       const data = await api.getGeneration(id);
+      // baseQueries могут быть строками или объектами - сохраняем как есть
       this.generation = {
         ...data,
         baseQueries: data.baseQueries || [],
@@ -115,7 +116,7 @@ class EditGenerationStore {
     }
   }
 
-  setActiveTab(tab: 'overview' | 'baseQueries' | 'clusters' | 'json') {
+  setActiveTab(tab: 'overview' | 'baseQueries' | 'clusters' | 'roots' | 'json') {
     this.activeTab = tab;
   }
 
