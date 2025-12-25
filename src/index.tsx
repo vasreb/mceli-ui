@@ -4,6 +4,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { router } from './routes';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Toaster } from 'react-hot-toast';
 
 const theme = createTheme({
   palette: {
@@ -16,6 +17,7 @@ root.render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <Toaster position="bottom-right" />
       <RouterProvider router={router} />
     </ThemeProvider>
   </React.StrictMode>
